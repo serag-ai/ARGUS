@@ -7,7 +7,7 @@ Unified runner for MRI + Pathology + OCT.
 
 from __future__ import annotations
 
-from my_agent.supervisor_graph_llama7B import supervisor
+from my_agent.supervisor_graph import supervisor
 
 from collections import defaultdict
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
@@ -20,8 +20,9 @@ import os
 import json
 import datetime
 from pathlib import Path
+from glob import glob
 
-
+# MRI tools are used only for PDF generation here
 from my_agent.utils import tools as mri_tools
 
 load_dotenv()
@@ -64,19 +65,19 @@ def infer_modality(input_path: str) -> str:
 
         if has_nifti and not has_img:
             return "mri_folder" 
-        if has_xyc and not has_img:
-            return "pathology_xyc_folder"
         if has_img:
             return "pathology"
         return "unknown"
 
     if pl.endswith(_IMAGE_EXTS):
+   
         return "image_ambiguous"
 
     return "unknown"
 
 
 # Supervisor runner
+
 def run_case_agent(
     user_question: str,
     input_path: str,
@@ -91,7 +92,7 @@ def run_case_agent(
 
     modality_guess = infer_modality(input_path)
 
-    # MRI defaults
+    #  MRI defaults 
     mri_model_path = os.getenv("MRI_MODEL_PATH", "").strip()
     mri_orientation = os.getenv("MRI_ORIENTATION", "COR").strip().upper()
     mri_device = os.getenv("MRI_DEVICE", "cpu").strip()
@@ -103,9 +104,9 @@ def run_case_agent(
     path_batch_size = int(os.getenv("PATH_BATCH_SIZE", "8"))
     path_seg_threshold = float(os.getenv("PATH_SEG_THRESHOLD", "0.5"))
     path_count_threshold = float(os.getenv("PATH_COUNT_THRESHOLD", "0.5"))
-    path_min_distance = int(os.getenv("PATH_MIN_DISTANCE", "5"))
+    path_min_distance = int(os.getenv("PATH_MIN_DISTANCE", "10"))
 
-    # OCT defaults
+    #OCT defaults
     oct_model_path = os.getenv("OCT_MODEL_PATH", "").strip()
     oct_out_dir_name = os.getenv("OCT_OUT_DIR_NAME", "oct_outputs").strip()
 
@@ -115,10 +116,9 @@ def run_case_agent(
         f"user_question: {user_question}",
     ]
 
-    # Helper dirs
+   
     base_dir = input_path if os.path.isdir(input_path) else str(Path(input_path).parent)
 
-    
     if modality_guess == "mri":
         if not mri_model_path or not os.path.exists(mri_model_path):
             raise FileNotFoundError(f"MRI_MODEL_PATH is not set or missing: {mri_model_path!r}")
@@ -132,12 +132,12 @@ def run_case_agent(
             f"batch_size: {mri_batch_size}",
         ]
 
-    
+   
     elif modality_guess == "pathology":
         if not path_model_path or not os.path.exists(path_model_path):
             raise FileNotFoundError(f"PATH_MODEL_PATH is not set or missing: {path_model_path!r}")
 
-        images_folder = input_path 
+        images_folder = input_path  
         out_dir = os.path.join(base_dir, "pathology_outputs")
 
         injected_lines += [
@@ -212,7 +212,7 @@ def run_case_agent(
     system_msg = SystemMessage(
         content=(
             "You are the SUPERVISOR coordinating MRI, Pathology, and OCT agents.\n"
-            "REQUIREMENTS:\n"
+            "HARD REQUIREMENTS:\n"
             "Never modify any provided paths or parameters.\n"
             "Choose the correct pipeline using input_path + user_question.\n"
             "Each agent may be called only once.\n"
@@ -242,7 +242,6 @@ def run_case_agent(
 
 
 
-# Event unpacking
 def _get_msg_role_content(msg):
     role = None
     content = getattr(msg, "content", None)
@@ -323,6 +322,8 @@ def unpack_events(run_result: dict) -> dict:
 
 
 # Tool JSON extraction 
+
+
 def _safe_json_loads(x):
     if x is None:
         return None
@@ -352,6 +353,7 @@ def _unwrap_possible_output_dict(d: dict) -> dict:
             return d[k]
     return d
 
+
 def _find_key_anywhere(agent_traces: dict, keys: tuple[str, ...]) -> str:
     for _, steps in agent_traces.items():
         for step in reversed(steps):
@@ -367,7 +369,8 @@ def _find_key_anywhere(agent_traces: dict, keys: tuple[str, ...]) -> str:
 
 
 
-# PDF creation 
+# MRI PDF creation 
+
 
 def _call_create_pdf_tool(payload: dict) -> dict:
     tool_obj = mri_tools.create_pdf_final_report
@@ -378,7 +381,7 @@ def _call_create_pdf_tool(payload: dict) -> dict:
 def _extract_last_tool_json(agent_traces: dict, agent_name: str):
     steps = agent_traces.get(agent_name, [])
 
-    
+    # 1) Prefer role == "tool"
     for step in reversed(steps):
         if step.get("role") != "tool":
             continue
@@ -386,6 +389,7 @@ def _extract_last_tool_json(agent_traces: dict, agent_name: str):
         if isinstance(obj, dict):
             return obj
 
+    # 2) Fallback: any dict (kept for backward compatibility)
     for step in reversed(steps):
         obj = _safe_json_loads(step.get("content"))
         if isinstance(obj, dict):
@@ -430,7 +434,6 @@ def create_pdf_if_complete(
 
     modality_u = (modality or "").strip().upper()
 
-    #Check Validation According to modality
     if modality_u in ("MRI", "OCT"):
             chk = _extract_last_tool_json(agent_traces, "check_agent")
             if not isinstance(chk, dict):
@@ -488,7 +491,7 @@ def create_pdf_if_complete(
         return {"created": False, "pdf_result": None, "reason": "Missing report_agent output (no PDF)."}
 
 
-    # PATIENT ID
+   
     base = os.path.basename(image_path)
     patient_id = base.replace(".nii.gz", "").replace(".nii", "")
     patient_id = os.path.splitext(patient_id)[0]
@@ -569,7 +572,6 @@ def create_pdf_if_complete(
 
     return {"created": True, "pdf_result": pdf_result, "reason": "PDF created successfully."}
 
-
 # Logging
 def write_agent_logs(parsed: dict, input_path: str, log_root: str | None = None) -> dict:
     agent_traces = parsed.get("agent_traces", {}) or {}
@@ -624,6 +626,7 @@ def write_agent_logs(parsed: dict, input_path: str, log_root: str | None = None)
 
 
 
+# High-level safe wrapper
 
 
 def safe_run_one(
@@ -647,6 +650,7 @@ def safe_run_one(
             agent_traces = parsed.get("agent_traces", {}) or {}
             keys = set(agent_traces.keys())
 
+    
             if ("oct_segmentation_agent" in keys) or ("oct_thickness_agent" in keys):
                 modality = "OCT"
                 model_path = os.getenv("OCT_MODEL_PATH", "").strip()
@@ -723,40 +727,143 @@ def safe_run_one(
         }
 
 
-# CLI 
+# CLI entrypoint
+
+def collect_input_files(input_path, exts=None):
+    """
+    Returns a list of files.
+    Supports:
+      - single file
+      - folder of files
+    """
+    if exts is None:
+        exts = [".nii", ".nii.gz", ".png", ".jpg", ".jpeg", ".bmp"]
+
+    if os.path.isfile(input_path):
+        return [input_path]
+
+    if os.path.isdir(input_path):
+        files = []
+        for ext in exts:
+            files.extend(glob(os.path.join(input_path, f"*{ext}")))
+        return sorted(files)
+
+    raise ValueError(f"Invalid input_path: {input_path}")
 
 if __name__ == "__main__":
-    #Pathology exmaple
-    # question = "Perform quantitative cell enumeration on the provided image and report the total cell count."
-    # input_path = "/acfs-home/hoh4002/serag_AI_lab/users/hoh4002/eICU/Agentic_BrAIn/pathology_images/im/Im008_1.jpg"
 
-    # #OCT Example 
-    #question = "Calculate the retinal layers thickness and then compare them normal range from literature before generate a clinical report."
-    #input_path ="/content/drive/MyDrive/Colab Notebooks/Agents/my-app/empty.nii.gz"
+    # Pathology
+    # question = "Count the cells found in the provided image and give me a report if the patient is healthy or not."
+    # input_path = "/content/drive/MyDrive/Colab Notebooks/Agents/im_test"
 
-    #MRI Example
-    question = "Compute volumetric measurements for Left Hippocampus, then compare it with normal range from literature before generate a clinical report."
-    input_path ="/content/drive/MyDrive/Colab Notebooks/Agents/MRI dataset_20 example/subject_1.nii.gz"
+    # OCT
+    # question = "Calculate the retinal layes thickness and then compare them normal range from literature before generate a clinical report."
+    # input_path = "/content/drive/MyDrive/Colab Notebooks/Agents/oct_dataset/oct_dataset_opened/oct_dataset/test/img"
 
-    #question = "Compute volumetric measurements for pituitary fossa, then compare it with normal range from literature before generate a clinical report."
-    #input_path ="/content/drive/MyDrive/Colab Notebooks/Agents/MRI dataset_20 example/subject_1.nii.gz"
+    # MRI
+    question = "Compute volumetric measurements for Right Amygdala and Left Hippocampus, then compare it with normal range from literature before generate a clinical report."
+    input_path = "/content/drive/MyDrive/Colab Notebooks/Agents/MRI dataset_20 example"
 
-    start_time = time.perf_counter()
-    result = safe_run_one(question=question, input_path=input_path, save_mri_pdf=True, verbose=True)
-    end_time = time.perf_counter()
 
-    print(f"\nTotal agent run time: {end_time - start_time:.2f} seconds\n")
-    if result.get("ok", False):
-        print(f"Logs saved to: {result.get('log_dir','')}")
-        if result.get("pdf_created", False):
-            print("\nPDF REPORT\n")
-            print(f"PDF created: {result.get('pdf_path','')}")
-        else:
-            print("\nPDF REPORT\n")
-            print(f"No PDF generated: {result.get('pdf_reason','')}")
-        print("\nFINAL OUTPUT\n")
-        print(result.get("final_answer", "") or "")
-    else:
-        print("RUN FAILED")
-        print(result.get("error", "Unknown error"))
-        print(result.get("traceback", ""))
+    
+  
+    
+    files = collect_input_files(input_path)
+
+    print(f"\nFound {len(files)} files to process\n")
+
+    total_start = time.perf_counter()
+    success, failed = 0, 0
+
+    
+
+    
+    for i, file_path in enumerate(files, 1):
+
+        print("=" * 60)
+        print(f"[{i}/{len(files)}] Processing: {file_path}")
+
+        start_time = time.perf_counter()
+
+        try:
+            result = safe_run_one(
+                question=question,
+                input_path=file_path,
+                save_mri_pdf=True,
+                verbose=True
+            )
+
+            elapsed = time.perf_counter() - start_time
+
+            print(f"\nTime: {elapsed:.2f} sec")
+
+            if result.get("ok", False):
+                success += 1
+
+                print(f"Logs: {result.get('log_dir','')}")
+
+                if result.get("pdf_created", False):
+                    print(f"PDF: {result.get('pdf_path','')}")
+                else:
+                    print(f"No PDF: {result.get('pdf_reason','')}")
+
+                print("\nFINAL OUTPUT:")
+                print(result.get("final_answer", "") or "")
+
+            else:
+                failed += 1
+                print("FAILED")
+                print(result.get("error", "Unknown error"))
+
+        except Exception as e:
+            failed += 1
+            print("CRASHED")
+            print(str(e))
+
+    
+   
+    total_time = time.perf_counter() - total_start
+
+    print("\n" + "=" * 60)
+    print("BATCH SUMMARY")
+    print("=" * 60)
+    print(f"Total files : {len(files)}")
+    print(f"Success     : {success}")
+    print(f"Failed      : {failed}")
+    print(f"Total time  : {total_time:.2f} sec")
+    print(f"Avg / case  : {total_time / max(len(files),1):.2f} sec")
+
+
+    
+# if __name__ == "__main__":
+#     #Pathology exmaple
+#     # question = "Perform quantitative cell enumeration on the provided image and report the total cell count."
+#     # input_path = "/acfs-home/hoh4002/serag_AI_lab/users/hoh4002/eICU/Agentic_BrAIn/pathology_images/im/Im008_1.jpg"
+
+#     # #OCT Example 
+#     # question = "Segment the retina image and calculate the thickness."
+#     # input_path ="/acfs-home/hoh4002/serag_AI_lab/users/hoh4002/eICU/Agentic_BrAIn/oct_dataset/oct_dataset_opened/oct_dataset/test/img/3_R_00_flip.bmp"
+
+#     #MRI Example
+#     question = "Compute volumetric measurements for Left Hippocampus, then compare it with normal range from literature before generate a clinical report."
+#     input_path ="/content/drive/MyDrive/Colab Notebooks/Agents/oct_dataset/oct_dataset_opened/oct_dataset/test/img/11_L_07_flip.bmp"
+
+#     start_time = time.perf_counter()
+#     result = safe_run_one(question=question, input_path=input_path, save_mri_pdf=True, verbose=True)
+#     end_time = time.perf_counter()
+
+#     print(f"\nTotal agent run time: {end_time - start_time:.2f} seconds\n")
+#     if result.get("ok", False):
+#         print(f"Logs saved to: {result.get('log_dir','')}")
+#         if result.get("pdf_created", False):
+#             print("\nPDF REPORT\n")
+#             print(f"PDF created: {result.get('pdf_path','')}")
+#         else:
+#             print("\nPDF REPORT\n")
+#             print(f"No PDF generated: {result.get('pdf_reason','')}")
+#         print("\nFINAL OUTPUT\n")
+#         print(result.get("final_answer", "") or "")
+#     else:
+#         print("RUN FAILED")
+#         print(result.get("error", "Unknown error"))
+#         print(result.get("traceback", ""))
