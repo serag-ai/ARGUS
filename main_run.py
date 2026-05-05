@@ -7,7 +7,7 @@ Unified runner for MRI + Pathology + OCT.
 
 from __future__ import annotations
 
-from my_agent.supervisor_graph import supervisor
+from my_agent.supervisor_graph import orchestrator
 
 from collections import defaultdict
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
@@ -44,7 +44,7 @@ def infer_modality(input_path: str) -> str:
       - xyc -> pathology_xyc (optional)
       - else -> unknown
 
-    We keep image inputs ambiguous so the SUPERVISOR can decide OCT vs Pathology using the question.
+    We keep image inputs ambiguous so the orchestrator can decide OCT vs Pathology using the question.
     """
     p = (input_path or "").strip()
     if not p:
@@ -76,16 +76,16 @@ def infer_modality(input_path: str) -> str:
     return "unknown"
 
 
-# Supervisor runner
+# orchestrator runner
 
 def run_case_agent(
     user_question: str,
     input_path: str,
 ) -> dict:
     """
-    Runs the supervisor with streaming enabled.
+    Runs the orchestrator with streaming enabled.
     Injects default model paths/params from env.
-    Supervisor picks correct pipeline among MRI, Pathology, OCT.
+    orchestrator picks correct pipeline among MRI, Pathology, OCT.
     """
     if not input_path or not os.path.exists(input_path):
         raise FileNotFoundError(f"input_path does not exist: {input_path}")
@@ -183,7 +183,7 @@ def run_case_agent(
 
 
     else:
-        injected_lines += ["PIPELINE_HINT: UNKNOWN (Supervisor must decide using question keywords)"]
+        injected_lines += ["PIPELINE_HINT: UNKNOWN (orchestrator must decide using question keywords)"]
 
         if mri_model_path and os.path.exists(mri_model_path):
             injected_lines += [
@@ -211,7 +211,7 @@ def run_case_agent(
 
     system_msg = SystemMessage(
         content=(
-            "You are the SUPERVISOR coordinating MRI, Pathology, and OCT agents.\n"
+            "You are the orchestrator coordinating MRI, Pathology, and OCT agents.\n"
             "HARD REQUIREMENTS:\n"
             "Never modify any provided paths or parameters.\n"
             "Choose the correct pipeline using input_path + user_question.\n"
@@ -235,7 +235,7 @@ def run_case_agent(
     )
 
     events = []
-    for chunk in supervisor.stream({"messages": [system_msg, user_msg]}, subgraphs=True):
+    for chunk in orchestrator.stream({"messages": [system_msg, user_msg]}, subgraphs=True):
         events.append(chunk)
 
     return {"events": events, "modality_guess": modality_guess, "input_path": input_path}
@@ -304,15 +304,15 @@ def unpack_events(run_result: dict) -> dict:
             seen[node_name].add(fp)
             agent_traces[node_name].append({"role": role, "content": content})
 
-        if node_name == "supervisor":
+        if node_name == "orchestrator":
             for m in reversed(msgs):
                 role, content = _get_msg_role_content(m)
                 if role == "assistant" and isinstance(content, str) and content.strip():
                     final_answer = content.strip()
                     break
 
-    if final_answer is None and "supervisor" in agent_traces:
-        for step in reversed(agent_traces["supervisor"]):
+    if final_answer is None and "orchestrator" in agent_traces:
+        for step in reversed(agent_traces["orchestrator"]):
             if step.get("role") == "assistant" and isinstance(step.get("content"), str) and step["content"].strip():
                 final_answer = step["content"].strip()
                 break

@@ -18,7 +18,7 @@ if OPENAI_API_KEY is None:
 
 # SEGMENTATION AGENT  
 
-segmentation_agent = create_react_agent(
+MRI_processing_agent = create_react_agent(
     model=init_chat_model(
         "openai:gpt-4.1-mini",
         api_key=OPENAI_API_KEY,
@@ -38,13 +38,13 @@ segmentation_agent = create_react_agent(
     name="segmentation_agent",
 )
 
-# CHECK AGENT  (validate segmentation)
+# Verification  AGENT  (validate segmentation)
 
-check_agent = create_react_agent(
+verification_agent = create_react_agent(
     model=init_chat_model("openai:gpt-4.1-mini", api_key=OPENAI_API_KEY),
     tools=[mri_tools.check_segmentation_validity],
     prompt=(
-        "You are the CHECK AGENT.\n"
+        "You are the Verification AGENT.\n"
         "Your job is to validate segmentation output using the provided tool and decide whether the workflow should continue.\n\n"
 
         "Instructions:\n"
@@ -115,11 +115,11 @@ report_agent = create_react_agent(
 
 # WEB SEARCH AGENT (Tavily)
 
-web_search_agent = create_react_agent(
+knowledge_retrieval_agent = create_react_agent(
     model=init_chat_model("openai:gpt-4.1-mini", api_key=OPENAI_API_KEY),
     tools=[mri_tools.tavily_web_search],
     prompt=(
-    "You are the WEB SEARCH AGENT.\n"
+    "You are the KNOWLEDGE RETRIEVAL SEARCH AGENT.\n"
     "Task: run Tavily web search once and return its JSON.\n"
     "- Always call `tavily_web_search` exactly once.\n"
     "- Use ONE concise query only.\n"
@@ -131,7 +131,7 @@ web_search_agent = create_react_agent(
 
 
 # PATHOLOGY SEGMENTATION AGENT
-pathology_segmentation_agent = create_react_agent(
+pathology_processing_agent = create_react_agent(
     model=init_chat_model("openai:gpt-4.1-mini", api_key=OPENAI_API_KEY),
     tools=[mri_tools.pathology_segment],
     prompt=(
@@ -184,7 +184,7 @@ cell_count_agent = create_react_agent(
 ### OCT 
 
 #OCT SEGMENTATION 
-oct_segmentation_agent = create_react_agent(
+oct_processing_agent = create_react_agent(
     model=init_chat_model("openai:gpt-4.1-mini", api_key=OPENAI_API_KEY),
     tools=[mri_tools.oct_segment],
     prompt=(
