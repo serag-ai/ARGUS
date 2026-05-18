@@ -1,7 +1,7 @@
-# 🧠 ARGUS: Agentic Reasoning and General Understanding System with Applications to Medical Image Analysis
+# ARGUS: Agentic Reasoning and General Understanding System with Applications to Medical Image Analysis
 ### A Multi-Agent Framework for Multimodal Medical Image Analysis
 
-## 📌 Overview
+## Overview
 
 **ARGUS** is an **agentic AI framework** designed for **multimodal medical image analysis**, integrating multiple specialized agents within a unified, orchestrated system.
 
@@ -17,23 +17,23 @@ At its core, ARGUS employs an **Orchestrator Agent** that performs reasoning and
 
 ## 🧩 Key Features
 
-- 🧠 **Agentic Reasoning (ReAct-based Orchestration)**
-- 🔄 **Dynamic Workflow Construction**
-- 🏥 **Multimodal Support**
+- **Agentic Reasoning (ReAct-based Orchestration)**
+- **Dynamic Workflow Construction**
+- **Multimodal Support**
   - Radiology (MRI)
   - Pathology (Hematology)
   - Ophthalmology (OCT)
-- ✅ **Verification Agent for Quality Control**
-- 📊 **Quantification Agents**
+- **Verification Agent for Quality Control**
+- **Quantification Agents**
   - Volume estimation
   - Cell counting
   - Retinal thickness
-- 📚 **Knowledge Retrieval Integration (Literature-aware)**
-- 📝 **Automated Clinical Report Generation**
+- **Knowledge Retrieval Integration (Literature-aware)**
+- **Automated Clinical Report Generation**
 
 ---
 
-## 🏗️ Framework Architecture
+## Framework Architecture
 
 ARGUS is composed of modular agents coordinated by a central orchestrator:
 
@@ -52,19 +52,19 @@ This modular design enables **scalability, extensibility, and robustness**.
 
 ---
 
-## 🔬 Supported Pipelines
+## Supported Pipelines
 
-### 🧠 MRI (Radiology)
+### MRI (Radiology)
 - Brain segmentation
 - Volumetric analysis (e.g., hippocampus, thalamus)
 - Validation of anatomical structures
 
-### 🧪 Pathology
+### Pathology
 - Cell detection via heatmaps
 - Connected component-based cell counting
 
 
-### 👁️ OCT (Ophthalmology)
+### OCT (Ophthalmology)
 - Retinal layer segmentation
 - Thickness estimation (RNFL, GCL/IPL, RPE)
 
@@ -92,7 +92,7 @@ All datasets are **publicly accessible through their official sources**.
   https://doi.org/10.1364/BOE.420456  
   *(Available upon request from original authors)*
 
-## ⚙️ Model Weights
+## Model Weights
 
 Pretrained model weights are available per modality:
 
@@ -102,38 +102,7 @@ Pretrained model weights are available per modality:
 
 ---
 
-## 🙏 Acknowledgment
-
-### QuickNAT
-
-The MRI segmentation agent is based on:
-
-> **QuickNAT: A Fully Convolutional Network for Fast and Accurate Brain Segmentation**
-
-We acknowledge and credit the original authors for their contribution to medical image segmentation.
-
----
-
-## 🧪 Evaluation
-
-The framework is evaluated across multiple dimensions:
-
-- ✅ Workflow completion rate  
-- 📊 Quantitative accuracy (Bland–Altman analysis)  
-- 🧠 Reasoning and knowledge integration  
-- ⚠️ Robustness and failure handling  
-
-### Key Observations
-
-- High reliability across all modalities  
-- Safe early termination when validation fails  
-- Strong agreement with ground truth measurements  
-- Zero unsafe predictions in pathology evaluation  
-- Effective human-in-the-loop escalation for uncertain cases  
-
----
-
-## ⚡ Performance
+## Performance
 
 Average processing time per case (NVIDIA T4 GPU):
 
@@ -143,7 +112,7 @@ Average processing time per case (NVIDIA T4 GPU):
 | Pathology | ~24.91 sec |
 | OCT | ~44.41 sec |
 
-## 🔍 Example Query
+## Example Query
 
 ```python
 query = "Compute hippocampus volume and compare with normal range"
@@ -152,3 +121,17 @@ response = orchestrator.run(
     query=query,
     input_path="IMAGE"
 )
+
+```
+
+---
+
+## Acknowledgment
+
+### QuickNAT
+
+The MRI segmentation agent is based on:
+
+> **QuickNAT: A Fully Convolutional Network for Fast and Accurate Brain Segmentation**
+
+We acknowledge and credit the original authors for their contribution to medical image segmentation.
