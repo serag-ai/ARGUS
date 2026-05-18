@@ -13,6 +13,7 @@ Unlike traditional static pipelines, ARGUS dynamically constructs workflows base
 - Intermediate outputs and validation  
 
 At its core, ARGUS employs an **Orchestrator Agent** that performs reasoning and tool selection using a **ReAct-style paradigm**, enabling adaptive, context-aware execution across complex clinical tasks.
+![Model Architecture](framework_image.png)
 
 ---
 
