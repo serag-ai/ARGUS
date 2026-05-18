@@ -7,7 +7,7 @@ Unified runner for MRI + Pathology + OCT.
 
 from __future__ import annotations
 
-from my_agent.supervisor_graph import orchestrator
+from my_agent.orchestrator_graph import orchestrator
 
 from collections import defaultdict
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
