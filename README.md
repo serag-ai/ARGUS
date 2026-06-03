@@ -99,7 +99,7 @@ All datasets are **publicly accessible through their official sources**.
 Pretrained model weights are available per modality:
 
 - MRI Segmentation (QuickNAT): *Available via original QuickNAT implementation*
-- Pathology Segmentation Model: *(provide upon request due to its large volume)*
+- Pathology Segmentation Model: *(https://github.com/serag-ai/Path-Cell-Count)*
 - OCT Segmentation Model: *(https://github.com/serag-ai/OCT-Retina-Analysis))*
 
 ---
