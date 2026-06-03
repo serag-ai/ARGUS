@@ -100,7 +100,7 @@ Pretrained model weights are available per modality:
 
 - MRI Segmentation (QuickNAT): *Available via original QuickNAT implementation*
 - Pathology Segmentation Model: *(provide upon request due to its large volume)*
-- OCT Segmentation Model: *(provide upon request due to its large volume)*
+- OCT Segmentation Model: *(https://github.com/serag-ai/OCT-Retina-Analysis))*
 
 ---
 
